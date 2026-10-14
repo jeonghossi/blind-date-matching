@@ -176,3 +176,15 @@ test('봇과 매칭하면 봇이 모든 종류의 미션을 알아서 진행함'
   }
   assert.strictEqual(svc.view('m1').status, 'revealed');
 });
+
+test('상태를 저장했다가 불러와도 이어서 진행됨 (깃허브 페이지 버전용)', () => {
+  const svc = matched();
+  finishMission(svc);
+  const saved = JSON.parse(JSON.stringify(svc.toJSON()));
+  const restored = make();
+  restored.loadState(saved);
+  assert.strictEqual(restored.view('m1').phase, 'deciding');
+  restored.decide('m1', true);
+  restored.decide('w1', true);
+  assert.strictEqual(restored.view('w1').missionIndex, 1);
+});

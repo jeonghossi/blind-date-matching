@@ -5,7 +5,8 @@
   "main": "src/matching.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build:pages": "node scripts/build-pages.js"
   },
   "engines": {
     "node": ">=18"

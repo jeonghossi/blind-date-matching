@@ -133,3 +133,6 @@ header .row h1 { margin-bottom: 12px; }
 /* 점수 이유 */
 .explain-note { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
 .bars .explain { grid-column: 1 / -1; font-size: 12px; color: var(--text); background: #faf6f7; border-radius: 6px; padding: 4px 8px; margin-bottom: 6px; }
+
+/* 깃허브 페이지 데모 안내 */
+.demo-banner { background: #fff6dd; color: #8a6d1c; border: 1px solid #f3e2a9; border-radius: 10px; padding: 8px 12px; font-size: 13px; text-align: center; margin-bottom: 16px; }

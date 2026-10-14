@@ -5,13 +5,16 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 let me = { user: null, profile: null };
 
+// 서버 버전은 fetch, 깃허브 페이지 버전은 브라우저 안의 localBackend로 요청
 async function api(path, options = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
-  const data = await res.json();
-  if (res.status === 401 && !path.startsWith('/api/auth/')) {
+  const { status, data } = window.localBackend
+    ? await window.localBackend.request(options.method || 'GET', path, options.body ? JSON.parse(options.body) : {})
+    : await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
+      .then(async (res) => ({ status: res.status, data: await res.json() }));
+  if (status === 401 && !path.startsWith('/api/auth/')) {
     loadMe(); // 로그인이 풀렸으면 로그인 화면으로
   }
-  if (!res.ok) throw data;
+  if (status >= 400) throw data;
   return data;
 }
 

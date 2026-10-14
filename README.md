@@ -4,6 +4,27 @@
 
 외부 패키지 없이 Node.js(18 이상)만 있으면 실행됩니다.
 
+## 🌐 데모 (설치 없이 바로 체험)
+
+👉 **https://jeonghossi.github.io/blind-date-matching/**
+
+서버 없이 HTML만으로 동작하는 깃허브 페이지 버전입니다.
+- 데이터는 **각자 브라우저에만** 저장돼요 (다른 사람과 데이터가 공유되지 않아요)
+- 새 탭에 주소를 붙여넣고 다른 테스트 계정으로 로그인하면, 한 브라우저 안에서 두 사람처럼 랜덤 매칭을 테스트할 수 있어요
+- 혼자라면 🎲 랜덤 → ⏳ 대기 중 → 🤖 봇이랑 테스트
+
+| | 서버 버전 (`npm start`) | 깃허브 페이지 버전 (`docs/`) |
+|---|---|---|
+| 데이터 저장 | 서버 (`data/`) — 모든 사용자 공유 | 브라우저 localStorage — 각자 따로 |
+| 실시간 연결 | Server-Sent Events | 같은 브라우저의 탭끼리 (storage 이벤트) |
+| 로그인 | HttpOnly 쿠키 | 탭마다 따로 (sessionStorage) |
+
+깃허브 페이지 버전은 `src/`·`public/`의 코드를 그대로 쓰고, 서버 역할만 [pages/local-backend.js](pages/local-backend.js)가 대신합니다. 코드를 고친 뒤에는 다시 만들어 주세요.
+
+```bash
+npm run build:pages   # docs/ 다시 생성
+```
+
 ## 실행
 
 ```bash
@@ -80,6 +101,9 @@ npm test       # 테스트 실행
 src/matching.js     매칭 로직 (거르기, 점수, 순위, 매칭)
 src/randomMatch.js  랜덤 매칭 + 익명 미션
 src/auth.js         계정 (비밀번호 해시, 로그인 세션)
+pages/              깃허브 페이지 버전용 브라우저 백엔드
+scripts/            docs/ 생성 스크립트
+docs/               깃허브 페이지 (자동 생성)
 src/sampleData.js   테스트용 샘플 프로필 20명
 server.js           웹 서버 + API
 public/             웹 화면

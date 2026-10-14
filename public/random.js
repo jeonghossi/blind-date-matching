@@ -5,11 +5,16 @@ let randomState = { status: 'idle' };
 // 내 상태를 실시간으로 받기
 function connectRandom() {
   if (randomStream) return;
-  randomStream = new EventSource('/api/random/events');
-  randomStream.onmessage = (e) => {
-    randomState = JSON.parse(e.data);
+  const onState = (state) => {
+    randomState = state;
     renderRandom();
   };
+  if (window.localBackend) {
+    randomStream = { close: window.localBackend.subscribe(onState) };
+    return;
+  }
+  randomStream = new EventSource('/api/random/events');
+  randomStream.onmessage = (e) => onState(JSON.parse(e.data));
 }
 
 function disconnectRandom() {

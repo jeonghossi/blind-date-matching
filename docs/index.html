@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>소개팅 매칭</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>💘 소개팅 매칭</h1>
+    <div id="userBox" hidden>
+      <span id="userName"></span>
+      <button id="logoutBtn" class="link">로그아웃</button>
+    </div>
+  </div>
+  <nav id="nav" hidden>
+    <button class="tab" data-tab="profile">📝 내 프로필</button>
+    <button class="tab" data-tab="recommend">✨ 추천</button>
+    <button class="tab" data-tab="random">🎲 랜덤</button>
+    <button class="tab" data-tab="admin">🛠️ 관리자</button>
+  </nav>
+</header>
+
+<main>
+  <div class="demo-banner">🧪 데모 버전 · 데이터는 이 브라우저에만 저장돼요</div>
+  <!-- 로그인 / 회원가입 -->
+  <section id="auth" class="panel">
+    <form id="authForm" class="card auth-card">
+      <div class="big-emoji center">🔐</div>
+      <div class="auth-switch">
+        <button type="button" class="tab active" data-mode="login">로그인</button>
+        <button type="button" class="tab" data-mode="signup">회원가입</button>
+      </div>
+      <label>👤 아이디 <input name="username" autocomplete="username" required></label>
+      <label>🔑 비밀번호 <input name="password" type="password" autocomplete="current-password" required></label>
+      <p id="authErrors" class="error"></p>
+      <button type="submit" class="primary big" id="authSubmit">로그인</button>
+      <p class="muted small center">🧪 테스트 계정: <b>test1</b>~<b>test20</b> / test1234 · 관리자: <b>admin</b> / admin1234</p>
+    </form>
+  </section>
+
+  <!-- 내 프로필 -->
+  <section id="profile" class="panel">
+    <form id="profileForm" class="card">
+      <p id="profileNotice" class="notice" hidden>👋 먼저 내 프로필을 만들어 주세요! 계정 하나에 프로필 하나만 만들 수 있어요.</p>
+      <h2>🙋 내 정보</h2>
+      <div class="grid">
+        <label>✏️ 이름 <input name="name" required></label>
+        <label>🚻 성별
+          <select name="gender" required><option value="">선택</option><option>남성</option><option>여성</option></select>
+        </label>
+        <label>🎂 나이 <input name="age" type="number" min="19" max="80" required></label>
+        <label>📏 키 (cm) <input name="height" type="number" min="130" max="230" required></label>
+        <label>📍 지역
+          <select name="region" required>
+            <option value="">선택</option>
+            <option>서울</option><option>경기</option><option>인천</option><option>부산</option><option>대구</option>
+            <option>광주</option><option>대전</option><option>울산</option><option>세종</option><option>강원</option>
+            <option>충북</option><option>충남</option><option>전북</option><option>전남</option><option>경북</option>
+            <option>경남</option><option>제주</option>
+          </select>
+        </label>
+        <label>💼 직업 <input name="job"></label>
+        <label>🙏 종교
+          <select name="religion"><option>무교</option><option>기독교</option><option>천주교</option><option>불교</option><option>기타</option></select>
+        </label>
+        <label>🧠 MBTI <input name="mbti" maxlength="4" placeholder="예: ENFP"></label>
+        <label>🍻 음주
+          <select name="drinking"><option>안 마심</option><option selected>가끔</option><option>자주</option></select>
+        </label>
+        <label>🚬 흡연
+          <select name="smoking"><option value="false">비흡연</option><option value="true">흡연</option></select>
+        </label>
+        <label>💕 만남 목적
+          <select name="intent"><option>가벼운 만남</option><option selected>진지한 연애</option><option>결혼 전제</option></select>
+        </label>
+      </div>
+      <h3>🎯 관심사</h3>
+      <div id="interests" class="chips"></div>
+
+      <h2>💝 원하는 상대</h2>
+      <div class="grid">
+        <label>🚻 성별
+          <select name="preferredGender"><option>여성</option><option>남성</option><option>상관없음</option></select>
+        </label>
+        <label>🎂 최소 나이 <input name="ageMin" type="number" value="20"></label>
+        <label>🎂 최대 나이 <input name="ageMax" type="number" value="40"></label>
+        <label>📏 최소 키 <input name="heightMin" type="number" value="150"></label>
+        <label>📏 최대 키 <input name="heightMax" type="number" value="195"></label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" name="nonSmokerOnly"> 🚭 비흡연자만</label>
+        <label><input type="checkbox" name="sameReligionOnly"> 🙏 같은 종교만</label>
+        <label><input type="checkbox" name="sameRegionOnly"> 📍 같은 지역만</label>
+      </div>
+      <p id="formErrors" class="error"></p>
+      <p id="formSaved" class="saved"></p>
+      <button type="submit" class="primary" id="profileSubmit">💌 등록하고 추천 보기</button>
+    </form>
+  </section>
+
+  <!-- 추천 -->
+  <section id="recommend" class="panel">
+    <div id="recommendResult"></div>
+  </section>
+
+  <!-- 랜덤 매칭 -->
+  <section id="random" class="panel">
+    <div id="randomView"></div>
+    <p id="randomError" class="error"></p>
+    <p class="muted small center">💡 새 탭에 이 주소를 붙여넣고 다른 계정으로 로그인하면, 두 사람처럼 실시간으로 테스트할 수 있어요</p>
+  </section>
+
+  <!-- 관리자 -->
+  <section id="admin" class="panel">
+    <div class="card row">
+      <label>🎚️ 최소 점수 <input id="minScore" type="number" value="40" min="0" max="100"></label>
+      <button id="matchBtn" class="primary">💘 전체 매칭 시작</button>
+    </div>
+    <div id="matchResult"></div>
+    <div class="card">
+      <div class="row">
+        <h2>👥 <span id="count">0</span>명</h2>
+        <button id="resetBtn">🔄 샘플로 초기화</button>
+      </div>
+      <div class="table-wrap"><table id="profileTable"></table></div>
+    </div>
+  </section>
+</main>
+
+<script src="matching.js"></script>
+<script src="randomMatch.js"></script>
+<script src="sampleData.js"></script>
+<script src="local-backend.js"></script>
+<script src="app.js"></script>
+<script src="random.js"></script>
+</body>
+</html>

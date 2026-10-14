@@ -5,8 +5,23 @@
 // - 그만둔 상대와는 다시 매칭되지 않음
 // - 모든 미션을 끝내면 서로 프로필 공개
 
-const EventEmitter = require('events');
-const crypto = require('crypto');
+// Node와 브라우저(깃허브 페이지) 양쪽에서 쓰기 위해 외부 모듈 없이 작성
+const randomUUID = () => globalThis.crypto.randomUUID();
+
+class Emitter {
+  constructor() {
+    this.listeners = {};
+  }
+
+  on(event, fn) {
+    (this.listeners[event] ||= []).push(fn);
+    return this;
+  }
+
+  emit(event, ...args) {
+    (this.listeners[event] || []).forEach((fn) => fn(...args));
+  }
+}
 
 const LIKE = ['👍 좋아요', '👎 싫어요'];
 const MAX_TEXT = 100;
@@ -198,7 +213,7 @@ function wantsGender(profile, other) {
   return !g || g === '상관없음' || g === other.gender;
 }
 
-class RandomMatchService extends EventEmitter {
+class RandomMatchService extends Emitter {
   // getProfile(id) → 프로필, botDelay: 봇이 답하는 데 걸리는 시간(ms)
   constructor({ getProfile, botDelay = 2000 } = {}) {
     super();
@@ -243,7 +258,7 @@ class RandomMatchService extends EventEmitter {
     if (!this.getProfile(userId)) throw new Error('프로필을 찾을 수 없습니다');
     this.leaveCurrent(userId);
     this.lastEnded.delete(userId);
-    this.startSession(userId, `bot:${crypto.randomUUID()}`);
+    this.startSession(userId, `bot:${randomUUID()}`);
   }
 
   cancelWaiting(userId) {
@@ -265,7 +280,7 @@ class RandomMatchService extends EventEmitter {
   startSession(a, b) {
     const [nickA, nickB] = shuffle(ANIMALS);
     const session = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       users: [a, b],
       nick: { [a]: nickA, [b]: nickB },
       missions: pickMissions(),
@@ -376,21 +391,52 @@ class RandomMatchService extends EventEmitter {
 
   // ---- 봇 ----
 
+  stateKey(session) {
+    return `${session.index}:${session.phase}:${session.step}`;
+  }
+
   scheduleBot(session) {
     const botId = session.users.find((id) => id.startsWith('bot:'));
     if (!botId || session.status !== 'playing') return;
-    const stateKey = () => `${session.index}:${session.phase}:${session.step}`;
-    const key = stateKey();
-    setTimeout(() => {
-      if (session.status !== 'playing' || stateKey() !== key) return;
-      if (session.phase === 'answering') {
-        const spec = this.stepsOf(session)[session.step];
-        const mine = session.answers[session.step][botId];
-        if (this.requiredUsers(session, spec).includes(botId) && mine == null) this.answer(botId, botAnswer(spec));
-      } else if (!session.decisions[botId]) {
-        this.decide(botId, true);
-      }
-    }, this.botDelay).unref?.();
+    const key = this.stateKey(session);
+    const timer = setTimeout(() => this.runBot(session.id, key), this.botDelay);
+    timer.unref?.();
+  }
+
+  // 봇 차례면 답하거나 계속하기 (그 사이 상태가 바뀌었으면 아무것도 안 함)
+  runBot(sessionId, key) {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.status !== 'playing' || this.stateKey(session) !== key) return;
+    const botId = session.users.find((id) => id.startsWith('bot:'));
+    if (session.phase === 'answering') {
+      const spec = this.stepsOf(session)[session.step];
+      const mine = session.answers[session.step][botId];
+      if (this.requiredUsers(session, spec).includes(botId) && mine == null) this.answer(botId, botAnswer(spec));
+    } else if (!session.decisions[botId]) {
+      this.decide(botId, true);
+    }
+  }
+
+  // ---- 저장/불러오기 (깃허브 페이지 버전은 브라우저 저장소에 상태를 저장) ----
+
+  toJSON() {
+    return {
+      queue: this.queue,
+      sessions: [...this.sessions.values()],
+      userSession: [...this.userSession],
+      lastEnded: [...this.lastEnded],
+      blocked: [...this.blocked],
+    };
+  }
+
+  loadState(data) {
+    this.reset();
+    if (!data) return;
+    this.queue = data.queue || [];
+    this.sessions = new Map((data.sessions || []).map((s) => [s.id, s]));
+    this.userSession = new Map(data.userSession || []);
+    this.lastEnded = new Map(data.lastEnded || []);
+    this.blocked = new Set(data.blocked || []);
   }
 
   // ---- 화면에 보여 줄 상태 (상대 인적사항은 공개 전까지 절대 포함하지 않음) ----
