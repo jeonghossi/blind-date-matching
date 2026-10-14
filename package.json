@@ -1,0 +1,14 @@
+{
+  "name": "blind-date-matching",
+  "version": "0.1.0",
+  "description": "소개팅 기반 매칭 로직 (거르기 → 점수 → 순위 → 1:1 매칭, 매칭 이유 설명)",
+  "main": "src/matching.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
