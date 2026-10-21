@@ -3,7 +3,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { recommend, matchAll, validateProfile } = require('./src/matching');
+const { recommend, matchAll, validateProfile, filterPair, scorePair } = require('./src/matching');
+const { DEFAULT_OLLAMA_URL, DEFAULT_MODEL, checkOllama, runAiMatch } = require('./src/aiMatch');
 const { sampleProfiles } = require('./src/sampleData');
 const { RandomMatchService } = require('./src/randomMatch');
 const { SESSION_TTL_MS, hashPassword, verifyPassword, validateCredentials, SessionStore, parseCookies } = require('./src/auth');
@@ -14,6 +15,8 @@ const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const COOKIE = 'sid';
+// 로컬 LLM 설정 (환경 변수로 바꿀 수 있음)
+const LLM = { baseUrl: process.env.OLLAMA_URL || DEFAULT_OLLAMA_URL, model: process.env.OLLAMA_MODEL || DEFAULT_MODEL };
 const PROFILE_FIELDS = ['name', 'gender', 'age', 'height', 'region', 'job', 'religion', 'mbti', 'drinking', 'smoking', 'intent', 'interests', 'preferences'];
 
 // ---------------------------------------------------------------------------
@@ -72,7 +75,7 @@ function openEventStream(req, res, profileId) {
   sseClients.get(profileId).add(res);
   pushState(profileId);
   const ping = setInterval(() => res.write(': ping\n\n'), 25000);
-  req.on('close', () => {
+  res.on('close', () => {
     clearInterval(ping);
     sseClients.get(profileId)?.delete(res);
   });
@@ -219,6 +222,36 @@ const server = http.createServer(async (req, res) => {
       const user = requireUser(req, res, { profile: true });
       if (!user) return;
       return sendJson(res, 200, recommend(getProfile(user.profileId), profiles));
+    }
+
+    // ---- 🤖 AI 매칭 (로컬 LLM) ----
+    if (route === 'GET /api/ai/status') {
+      if (!requireUser(req, res)) return;
+      return sendJson(res, 200, await checkOllama(LLM));
+    }
+
+    // 진행 상황을 SSE로 하나씩 보내 준다. 브라우저가 연결을 끊으면 LLM 호출도 멈춤
+    if (route === 'GET /api/ai-match/stream') {
+      const user = requireUser(req, res, { profile: true });
+      if (!user) return;
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+      const controller = new AbortController();
+      res.on('close', () => controller.abort());
+      const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+      const status = await checkOllama(LLM);
+      if (!status.ok) {
+        send({ type: 'error', error: status.error });
+        return res.end();
+      }
+      await runAiMatch(getProfile(user.profileId), profiles, {
+        ...LLM,
+        model: status.model,
+        guard: filterPair,
+        ruleScore: (a, b) => scorePair(a, b).score,
+        onEvent: send,
+        signal: controller.signal,
+      });
+      return res.end();
     }
 
     // ---- 랜덤 매칭 (항상 로그인한 본인 프로필로만) ----

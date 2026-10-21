@@ -136,3 +136,12 @@ header .row h1 { margin-bottom: 12px; }
 
 /* 깃허브 페이지 데모 안내 */
 .demo-banner { background: #fff6dd; color: #8a6d1c; border: 1px solid #f3e2a9; border-radius: 10px; padding: 8px 12px; font-size: 13px; text-align: center; margin-bottom: 16px; }
+
+/* AI 매칭 */
+.ok-text { color: var(--good); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.bar.progress { height: 10px; margin: 10px 0 6px; }
+.bar.progress > div { transition: width .3s; }
+.ai-reason { font-size: 14px; line-height: 1.6; background: #f6f3ff; border-radius: 10px; padding: 10px 12px; margin: 8px 0 6px; }
+.tag.warn { background: #fff4d6; color: #8a6d1c; }
+.random-cta .btn-row { margin-top: 0; }

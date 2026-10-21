@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "build:pages": "node scripts/build-pages.js"
+    "build:pages": "node scripts/build-pages.js",
+    "create:bot": "node scripts/create-matching-bot.js",
+    "eval:ai": "node scripts/eval-ai.js"
   },
   "engines": {
     "node": ">=18"

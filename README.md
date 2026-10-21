@@ -95,12 +95,35 @@ npm test       # 테스트 실행
 - 마지막 미션까지 끝내면 서로 프로필 공개
 - 실시간 연결은 Server-Sent Events 사용 (브라우저 창 두 개로 테스트하거나 🤖 봇과 테스트)
 
+### 🤖 AI 매칭 (로컬 LLM)
+로컬에서 돌아가는 LLM(Ollama)이 후보를 **한 명씩 직접 보고** 거를지 · 몇 점인지 · 왜 그런지를 판단합니다.
+- 기본 모델: `matching-bot` — EXAONE 3.5 2.4B에 판단 지시문 · 점수 기준 · 예시 판단 3개를 넣은 전용 모델 (없으면 `exaone3.5:2.4b`에 같은 지시문을 매번 보내서 대신함, 환경 변수 `OLLAMA_MODEL`, `OLLAMA_URL`로 변경)
+- 작은 모델이 틀리기 쉬운 숫자 비교(나이 범위 등)는 코드가 계산해 **[확인된 사실]**로 함께 전달
+- 답은 JSON 형식을 정해서 받음 (통과 여부 / 거른 이유 / 점수 / 태그 / 설명)
+- AI가 필수 조건을 놓치고 통과시키면 규칙 검사가 바로잡고 `⚠️ AI가 놓친 조건`으로 표시
+- 판단이 끝난 사람부터 실시간으로 화면에 표시 (19명 기준 약 1분)
+
+```bash
+ollama pull exaone3.5:2.4b   # 처음 한 번
+npm run create:bot           # 전용 모델 matching-bot 만들기 (지시문·예시를 바꾸면 다시 실행)
+npm run eval:ai              # AI 판단 품질 평가 (거르기 정확도, 점수 분포, 지어낸 관심사)
+npm start                    # Ollama가 켜져 있으면 🤖 AI 매칭 탭 사용 가능
+```
+
+#### 깃허브 페이지에서 AI 쓰기
+깃허브 페이지 버전은 브라우저가 **내 컴퓨터의 Ollama**를 직접 부릅니다. Ollama가 깃허브 페이지 주소를 허용하도록 설정한 뒤 Ollama를 다시 켜 주세요. (크롬이 "로컬 네트워크 접근"을 물어보면 허용)
+
+```powershell
+setx OLLAMA_ORIGINS "https://jeonghossi.github.io"
+```
+
 ## 폴더 구조
 
 ```
 src/matching.js     매칭 로직 (거르기, 점수, 순위, 매칭)
 src/randomMatch.js  랜덤 매칭 + 익명 미션
 src/auth.js         계정 (비밀번호 해시, 로그인 세션)
+src/aiMatch.js      🤖 AI 매칭 (로컬 LLM 판단)
 pages/              깃허브 페이지 버전용 브라우저 백엔드
 scripts/            docs/ 생성 스크립트
 docs/               깃허브 페이지 (자동 생성)
@@ -119,6 +142,8 @@ test/               테스트
 | POST / PUT | `/api/profiles/me` | 내 프로필 만들기 / 수정 |
 | GET | `/api/recommendations/me` | 내 추천 순위 + 걸러진 사람 |
 | GET | `/api/random/events` | 랜덤 매칭 상태 실시간 수신 (SSE) |
+| GET | `/api/ai/status` | 로컬 LLM 연결 상태 |
+| GET | `/api/ai-match/stream` | AI 매칭 진행 상황 실시간 수신 (SSE) |
 | POST | `/api/random/join` · `bot` · `cancel` · `answer` · `decide` · `leave` | 랜덤 매칭 동작 |
 | GET | `/api/admin/profiles` | (관리자) 전체 프로필 |
 | DELETE | `/api/admin/profiles/:id` | (관리자) 프로필 삭제 |

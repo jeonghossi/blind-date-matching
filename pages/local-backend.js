@@ -3,7 +3,8 @@
 // - 로그인은 sessionStorage → 탭마다 다른 계정으로 로그인 가능 (두 사람처럼 테스트)
 // - 다른 탭의 변경은 storage 이벤트로 실시간 반영
 (function () {
-  const { recommend, matchAll, validateProfile } = window.Matching;
+  const { recommend, matchAll, validateProfile, filterPair, scorePair } = window.Matching;
+  const { checkOllama, runAiMatch } = window.AiMatch;
   const { RandomMatchService } = window.RandomMatch;
   const { sampleProfiles } = window.SampleData;
 
@@ -241,6 +242,17 @@
       return ok(random.view(user.profileId));
     }
 
+    // AI 매칭: 이 컴퓨터에서 Ollama가 켜져 있어야 함
+    if (r === 'GET /api/ai/status') {
+      const [, err] = requireUser();
+      if (err) return err;
+      const status = await checkOllama();
+      if (!status.ok && status.error.includes('연결할 수 없어요')) {
+        status.error = '이 컴퓨터의 Ollama에 연결할 수 없어요 (README의 "깃허브 페이지에서 AI 쓰기" 참고)';
+      }
+      return ok(status);
+    }
+
     // 관리자
     if (r === 'GET /api/admin/profiles') {
       const [, err] = requireUser({ admin: true });
@@ -283,6 +295,26 @@
       await loadData();
       loadRandom();
       return route(method, path, body);
+    },
+    // AI 매칭: 브라우저에서 바로 이 컴퓨터의 Ollama를 호출 → 중지 함수 반환
+    aiMatch(onEvent) {
+      const controller = new AbortController();
+      (async () => {
+        await loadData();
+        const user = currentUser();
+        const me = user && getProfile(user.profileId);
+        if (!me) return onEvent({ type: 'error', error: '먼저 프로필을 만들어 주세요' });
+        const status = await checkOllama();
+        if (!status.ok) return onEvent({ type: 'error', error: status.error });
+        await runAiMatch(me, profiles, {
+          model: status.model,
+          guard: filterPair,
+          ruleScore: (a, b) => scorePair(a, b).score,
+          onEvent,
+          signal: controller.signal,
+        });
+      })().catch((e) => onEvent({ type: 'error', error: e.message }));
+      return () => controller.abort();
     },
     // 랜덤 매칭 상태 구독 → 구독 해제 함수 반환
     subscribe(fn) {

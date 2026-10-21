@@ -25,7 +25,8 @@ ${read(file)}
 write('matching.js', wrapModule('src/matching.js', 'Matching'));
 write('randomMatch.js', wrapModule('src/randomMatch.js', 'RandomMatch'));
 write('sampleData.js', wrapModule('src/sampleData.js', 'SampleData'));
-for (const f of ['app.js', 'random.js', 'style.css']) write(f, read(`public/${f}`));
+write('aiMatch.js', wrapModule('src/aiMatch.js', 'AiMatch'));
+for (const f of ['app.js', 'random.js', 'ai.js', 'style.css']) write(f, read(`public/${f}`));
 write('local-backend.js', read('pages/local-backend.js'));
 
 // index.html: 상대 경로로 바꾸고, 브라우저 백엔드 스크립트 추가, 안내 문구 변경
@@ -36,8 +37,8 @@ const replace = (from, to) => {
 };
 replace('href="/style.css"', 'href="style.css"');
 replace(
-  '<script src="/app.js"></script>\n<script src="/random.js"></script>',
-  ['matching.js', 'randomMatch.js', 'sampleData.js', 'local-backend.js', 'app.js', 'random.js']
+  '<script src="/app.js"></script>\n<script src="/random.js"></script>\n<script src="/ai.js"></script>',
+  ['matching.js', 'randomMatch.js', 'sampleData.js', 'aiMatch.js', 'local-backend.js', 'app.js', 'random.js', 'ai.js']
     .map((f) => `<script src="${f}"></script>`).join('\n'),
 );
 replace('<main>', '<main>\n  <div class="demo-banner">🧪 데모 버전 · 데이터는 이 브라우저에만 저장돼요</div>');

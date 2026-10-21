@@ -27,6 +27,7 @@ function showPanel(id) {
   document.querySelectorAll('#nav .tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
   if (id === 'recommend') showRecommendations();
   if (id === 'random') connectRandom();
+  if (id === 'ai') showAiPanel();
   if (id === 'admin') loadAdmin();
 }
 
@@ -44,11 +45,13 @@ function render() {
   $('#nav').hidden = !user;
   if (!user) {
     disconnectRandom();
+    aiStop?.(); // 다른 사람이 로그인하면 이전 AI 결과는 지운다
+    aiRun = null;
     return showPanel('auth');
   }
   $('#userName').textContent = `${user.role === 'admin' ? '🛠️' : '👤'} ${user.username}`;
 
-  const tabs = user.role === 'admin' ? ['admin'] : profile ? ['profile', 'recommend', 'random'] : ['profile'];
+  const tabs = user.role === 'admin' ? ['admin'] : profile ? ['profile', 'recommend', 'ai', 'random'] : ['profile'];
   document.querySelectorAll('#nav .tab').forEach((b) => (b.hidden = !tabs.includes(b.dataset.tab)));
 
   fillProfileForm(profile);
@@ -215,7 +218,10 @@ async function showRecommendations() {
     </details>
     <div class="card random-cta">
       <span>😕 맘에 드는 사람이 없나요?</span>
-      <button class="primary" onclick="showPanel('random')">🎲 랜덤 매칭 해보기</button>
+      <div class="btn-row">
+        <button onclick="showPanel('ai')">🤖 AI에게 골라 달라기</button>
+        <button class="primary" onclick="showPanel('random')">🎲 랜덤 매칭 해보기</button>
+      </div>
     </div>`;
 }
 
