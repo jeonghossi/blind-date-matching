@@ -110,6 +110,13 @@ npm run eval:ai              # AI 판단 품질 평가 (거르기 정확도, 점
 npm start                    # Ollama가 켜져 있으면 🤖 AI 매칭 탭 사용 가능
 ```
 
+#### 💬 AI에게 물어보기
+추천 카드의 **💬 AI에게 물어보기** 버튼으로 그 사람에 대해 AI와 대화할 수 있습니다. (예: "취미가 안 겹치는데 왜 어울려?", "첫 데이트로 뭐 하면 좋을까?")
+- 두 사람의 프로필 · [확인된 사실] · 항목별 점수 근거 · AI 매칭 판단을 근거로 답함
+- "이 사람/그분/상대" 같은 말은 상대 이름으로 바꿔서 전달 (작은 모델의 헷갈림 방지)
+- 답은 한 글자씩 실시간으로 표시, 대화 기록은 창을 닫아도 유지
+- 대화는 JSON 전용인 matching-bot 대신 기본 모델(`exaone3.5:2.4b`)에 상담 지시문을 붙여 사용
+
 #### 깃허브 페이지에서 AI 쓰기
 깃허브 페이지 버전은 브라우저가 **내 컴퓨터의 Ollama**를 직접 부릅니다. Ollama가 깃허브 페이지 주소를 허용하도록 설정한 뒤 Ollama를 다시 켜 주세요. (크롬이 "로컬 네트워크 접근"을 물어보면 허용)
 
@@ -144,6 +151,7 @@ test/               테스트
 | GET | `/api/random/events` | 랜덤 매칭 상태 실시간 수신 (SSE) |
 | GET | `/api/ai/status` | 로컬 LLM 연결 상태 |
 | GET | `/api/ai-match/stream` | AI 매칭 진행 상황 실시간 수신 (SSE) |
+| POST | `/api/ai/ask` | 💬 AI에게 물어보기 (`{ candidateId, messages }` → 답을 NDJSON 스트림으로) |
 | POST | `/api/random/join` · `bot` · `cancel` · `answer` · `decide` · `leave` | 랜덤 매칭 동작 |
 | GET | `/api/admin/profiles` | (관리자) 전체 프로필 |
 | DELETE | `/api/admin/profiles/:id` | (관리자) 프로필 삭제 |

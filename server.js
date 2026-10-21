@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { recommend, matchAll, validateProfile, filterPair, scorePair } = require('./src/matching');
-const { DEFAULT_OLLAMA_URL, DEFAULT_MODEL, checkOllama, runAiMatch } = require('./src/aiMatch');
+const { DEFAULT_OLLAMA_URL, DEFAULT_MODEL, CHAT_MODEL, checkOllama, runAiMatch, askAi } = require('./src/aiMatch');
 const { sampleProfiles } = require('./src/sampleData');
 const { RandomMatchService } = require('./src/randomMatch');
 const { SESSION_TTL_MS, hashPassword, verifyPassword, validateCredentials, SessionStore, parseCookies } = require('./src/auth');
@@ -251,6 +251,37 @@ const server = http.createServer(async (req, res) => {
         onEvent: send,
         signal: controller.signal,
       });
+      return res.end();
+    }
+
+    // 💬 AI에게 물어보기: 답을 한 조각씩 NDJSON으로 흘려보낸다
+    if (route === 'POST /api/ai/ask') {
+      const user = requireUser(req, res, { profile: true });
+      if (!user) return;
+      const { candidateId, messages, aiJudgment } = await readBody(req);
+      const me = getProfile(user.profileId);
+      const other = getProfile(candidateId);
+      if (!other || other.id === me.id) return sendJson(res, 404, { error: '상대를 찾을 수 없어요' });
+      const status = await checkOllama({ ...LLM, model: CHAT_MODEL });
+      if (!status.ok) return sendJson(res, 503, { error: status.error });
+
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-cache' });
+      const controller = new AbortController();
+      res.on('close', () => controller.abort());
+      const send = (event) => res.write(`${JSON.stringify(event)}\n`);
+      try {
+        await askAi(me, other, {
+          baseUrl: LLM.baseUrl,
+          history: messages,
+          breakdown: scorePair(me, other).breakdown,
+          aiJudgment,
+          onToken: (text) => send({ type: 'token', text }),
+          signal: controller.signal,
+        });
+        send({ type: 'done' });
+      } catch (e) {
+        if (!controller.signal.aborted) send({ type: 'error', error: e.message });
+      }
       return res.end();
     }
 

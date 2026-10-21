@@ -83,6 +83,7 @@ function resetAi() {
 }
 
 function aiCard(r, rank) {
+  registerChatTarget(r.profile, { score: r.score, reason: r.reason });
   return `<div class="card rec">
     <div class="rank">${MEDALS[rank - 1] || rank + '위'}</div>
     <div class="rec-body">
@@ -91,6 +92,7 @@ function aiCard(r, rank) {
       <div class="tags">${tags(r.tags)}</div>
       <p class="ai-reason">🤖 ${esc(r.reason)}</p>
       ${r.ruleScore != null ? `<div class="muted small">📏 규칙 점수 ${r.ruleScore}점과 비교해 보세요</div>` : ''}
+      ${askButton(r.profile.id)}
     </div>
     ${scoreBox(r.score, aiVerdict(r.score))}
   </div>`;

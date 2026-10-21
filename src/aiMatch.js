@@ -255,7 +255,108 @@ async function runAiMatch(me, profiles, { guard, ruleScore, onEvent, signal, ...
   onEvent({ type: 'done', recommended, filteredOut: results.filter((r) => !r.pass) });
 }
 
+// ---------------------------------------------------------------------------
+// 💬 AI에게 물어보기: 추천된 상대에 대해 자유롭게 질문하면 근거를 들어 답한다
+// matching-bot은 JSON으로만 답하도록 가르쳐져 있어서, 대화는 기본 모델 + 상담 지시문을 쓴다
+// ---------------------------------------------------------------------------
+
+const CHAT_MODEL = BASE_MODEL;
+const MAX_QUESTION = 300;
+const MAX_HISTORY = 8;
+
+const CHAT_INTRO = '너는 소개팅 매칭 앱의 AI 상담사야. 회원이 추천받은 상대에 대해 물어보면 아래 정보를 보고 답해 줘.';
+
+// 작은 모델은 마지막에 읽은 지시를 더 잘 따르므로 규칙은 정보 뒤에 둔다
+const CHAT_RULES = `[답하는 규칙]
+- 위 정보에 있는 내용만 근거로 말해. 없는 정보는 지어내지 말고 "프로필에는 나와 있지 않아요"라고 해.
+- [확인된 사실]의 숫자는 정확하니 다시 계산하지 마.
+- 공통점이 적으면 솔직하게 인정하고, 대신 실제로 잘 맞는 점(만남 목적, 생활습관, 지역, 나이 등)을 근거로 설명해.
+- 해요체로 짧고 핵심만. 목록을 쓰더라도 3개 이내. 한국어로만.`;
+
+// "이 사람", "그분", "상대" 같은 말은 작은 모델이 회원으로 착각하기 쉬워서 상대 이름으로 바꿔 준다
+function resolvePronouns(question, other) {
+  return question.replace(/(이|그|저)\s?(사람|분|친구)|상대방?/g, `${other.name}님`);
+}
+
+function chatContext(me, other, { breakdown = [], aiJudgment } = {}) {
+  const only = (a, b) => (a.interests || []).filter((x) => !(b.interests || []).includes(x)).join(', ') || '없음';
+  const lines = [
+    `[호칭] 질문하는 회원은 ${me.name}님이야. 회원은 "회원님"이라고 부르고, 상대는 "${other.name}님"이라고 불러.`,
+    '',
+    '[프로필]', describe('회원', me), describe('상대', other),
+    '', facts(me, other),
+    `- 회원님만 좋아하는 것: ${only(me, other)}`,
+    `- ${other.name}님만 좋아하는 것: ${only(other, me)}`,
+  ];
+  if (breakdown.length) {
+    const total = Math.round(breakdown.reduce((sum, b) => sum + b.points, 0));
+    lines.push('', `[점수 근거] 규칙 점수 ${total}점 / 100점`);
+    breakdown.forEach((b) => lines.push(`- ${b.label.replace(/^\S+\s/, '')} ${b.points}/${b.max}: ${b.detail}`));
+  }
+  if (aiJudgment?.reason) {
+    lines.push('', `[AI 매칭 판단] ${Number(aiJudgment.score) || 0}점 — ${String(aiJudgment.reason).slice(0, 300)}`);
+  }
+  return lines.join('\n');
+}
+
+// 대화 기록 정리: user/assistant만, 길이 제한, 마지막은 반드시 회원 질문
+function cleanHistory(history) {
+  const list = (Array.isArray(history) ? history : [])
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.trim().slice(0, m.role === 'user' ? MAX_QUESTION : 1000) }))
+    .slice(-MAX_HISTORY);
+  if (!list.length || list[list.length - 1].role !== 'user') throw new Error('질문을 입력하세요');
+  return list;
+}
+
+function buildChatMessages(me, other, { history, breakdown, aiJudgment } = {}) {
+  const turns = cleanHistory(history).map((m) =>
+    m.role === 'user' ? { ...m, content: resolvePronouns(m.content, other) } : m);
+  return [
+    { role: 'system', content: `${CHAT_INTRO}\n\n${chatContext(me, other, { breakdown, aiJudgment })}\n\n${CHAT_RULES}` },
+    ...turns,
+  ];
+}
+
+// 답을 한 조각씩 onToken으로 흘려보내고, 다 끝나면 전체 답을 돌려준다
+async function askAi(me, other, { history, breakdown, aiJudgment, onToken = () => {}, baseUrl = DEFAULT_OLLAMA_URL, model = CHAT_MODEL, fetchImpl = fetch, signal } = {}) {
+  const messages = buildChatMessages(me, other, { history, breakdown, aiJudgment });
+  const res = await fetchImpl(`${baseUrl}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({ model, messages, stream: true, options: { temperature: 0.4, num_ctx: 4096, num_predict: 450 } }),
+  });
+  if (!res.ok) throw new Error(`Ollama 응답 오류 (${res.status})`);
+
+  // Ollama 스트림: 한 줄에 JSON 하나 (NDJSON)
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let answer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!line) continue;
+      const chunk = JSON.parse(line);
+      if (chunk.error) throw new Error(chunk.error);
+      const text = (chunk.message?.content || '').replace(/[*#`]/g, '');
+      if (text) {
+        answer += text;
+        onToken(text);
+      }
+    }
+  }
+  return answer.trim();
+}
+
 module.exports = {
-  DEFAULT_OLLAMA_URL, DEFAULT_MODEL, BASE_MODEL, SYSTEM_PROMPT, ANSWER_SCHEMA,
+  DEFAULT_OLLAMA_URL, DEFAULT_MODEL, BASE_MODEL, CHAT_MODEL, SYSTEM_PROMPT, ANSWER_SCHEMA,
   teachingMessages, buildMessages, facts, sanitize, checkOllama, judgePair, runAiMatch,
+  buildChatMessages, cleanHistory, askAi,
 };

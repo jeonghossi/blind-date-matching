@@ -23,11 +23,11 @@ Claude가 이 프로젝트를 이어서 관리할 때 먼저 읽는 파일. 구�
 |---|---|
 | `src/matching.js` | 1단계 거르기(양방향) · 2단계 점수(`WEIGHTS`, 합 100) · 이유 태그/`detail` 설명 · 추천/전체 매칭 |
 | `src/randomMatch.js` | 랜덤 매칭 + 익명 미션. 미션 종류는 `KINDS`, 목록은 `MISSION_POOL`. `toJSON`/`loadState`로 상태 저장 |
-| `src/aiMatch.js` | 🤖 AI 매칭. `SYSTEM_PROMPT`, 예시 `EXAMPLES`, `facts()`(코드가 계산한 사실), JSON 스키마, `runAiMatch` |
+| `src/aiMatch.js` | 🤖 AI 매칭. `SYSTEM_PROMPT`, 예시 `EXAMPLES`, `facts()`(코드가 계산한 사실), JSON 스키마, `runAiMatch` / 💬 AI에게 물어보기 `CHAT_RULES`·`chatContext`·`askAi`(스트림) |
 | `src/auth.js` | scrypt 비밀번호 해시, 로그인 세션(메모리), 쿠키 |
 | `src/sampleData.js` | 샘플 프로필 20명 (테스트 계정 test1~test20 / test1234, admin / admin1234) |
 | `server.js` | HTTP 서버 + 라우팅 (외부 프레임워크 없음) |
-| `public/` | 화면 (index.html, app.js, random.js, ai.js, style.css) |
+| `public/` | 화면 (index.html, app.js, random.js, ai.js, chat.js, style.css). `chat.js`는 💬 대화 창, 카드에 `askButton(id)` + `registerChatTarget()`로 연결 |
 | `pages/local-backend.js` | 깃허브 페이지용 브라우저 백엔드 |
 | `scripts/build-pages.js` | `src/`·`public/`·`pages/` → `docs/` 생성 (Node 모듈을 브라우저 전역으로 감쌈) |
 | `scripts/create-matching-bot.js` | `ollama/Modelfile` 생성 + `ollama create matching-bot` |
@@ -58,6 +58,7 @@ npm run eval:ai      # AI 판단 품질 평가 (실제 Ollama 필요, 약 2분)
 - 평가 기록 (57회 판단): 지시 전 → 지어낸 관심사 14건, 85점 쏠림 8/13 / 지시·예시 후 → 0~5건, 점수 4~5종. 거르기 정확도 98~100%
 - 다음 개선 후보: `exaone3.5:7.8b`(VRAM 6GB에 들어감) 비교 평가. 파인튜닝은 Python 환경이 없어 보류 중
 - EXAONE은 비상업 라이선스 → 상업화하면 Qwen/Gemma 계열로 교체 필요
+- 💬 AI에게 물어보기는 `matching-bot`(JSON 전용) 대신 `CHAT_MODEL`(= exaone3.5:2.4b)을 씀. 질문 속 "이 사람/그분/상대"는 `resolvePronouns`가 상대 이름으로 바꿈. 규칙은 정보 **뒤에** 둬야 작은 모델이 더 잘 따름. 알려진 한계: 가끔 사실을 틀림(예: 음주 습관이 다른데 비슷하다고 함), 목록 형식 선호
 - 깃허브 페이지에서 AI를 쓰려면 사용자 PC에 `OLLAMA_ORIGINS=https://jeonghossi.github.io` 설정 필요 (아직 설정 안 함)
 
 ## 개발 환경 주의

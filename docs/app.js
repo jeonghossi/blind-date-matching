@@ -197,6 +197,7 @@ function scoreBox(score, summary) {
 
 async function showRecommendations() {
   const { recommended, filteredOut } = await api('/api/recommendations/me');
+  recommended.forEach((r) => registerChatTarget(r.profile));
   $('#recommendResult').innerHTML = `
     <h2 class="section-title">✨ 추천 ${recommended.length}명</h2>
     ${recommended.length === 0 ? '<div class="card muted">😢 맞는 상대가 없어요. 조건을 넓혀 보세요!</div>' : ''}
@@ -208,6 +209,7 @@ async function showRecommendations() {
           <div class="muted small">${profileLine(r.profile)}</div>
           <div class="tags">${tags(r.reasons)}</div>
           <details><summary>📊 왜 ${r.score}점일까?</summary>${bars(r.breakdown, `왼쪽이 나, 오른쪽이 ${r.profile.name}님`)}</details>
+          ${askButton(r.profile.id)}
         </div>
         ${scoreBox(r.score, r.summary)}
       </div>`).join('')}

@@ -4,7 +4,7 @@
 // - 다른 탭의 변경은 storage 이벤트로 실시간 반영
 (function () {
   const { recommend, matchAll, validateProfile, filterPair, scorePair } = window.Matching;
-  const { checkOllama, runAiMatch } = window.AiMatch;
+  const { checkOllama, runAiMatch, askAi, CHAT_MODEL } = window.AiMatch;
   const { RandomMatchService } = window.RandomMatch;
   const { sampleProfiles } = window.SampleData;
 
@@ -295,6 +295,18 @@
       await loadData();
       loadRandom();
       return route(method, path, body);
+    },
+    // 💬 AI에게 물어보기: 답을 한 조각씩 onToken으로
+    async askAi({ candidateId, messages, aiJudgment }, onToken, signal) {
+      await loadData();
+      const user = currentUser();
+      const me = user && getProfile(user.profileId);
+      const other = getProfile(candidateId);
+      if (!me) throw new Error('먼저 프로필을 만들어 주세요');
+      if (!other || other.id === me.id) throw new Error('상대를 찾을 수 없어요');
+      const status = await checkOllama({ model: CHAT_MODEL });
+      if (!status.ok) throw new Error(status.error);
+      await askAi(me, other, { history: messages, breakdown: scorePair(me, other).breakdown, aiJudgment, onToken, signal });
     },
     // AI 매칭: 브라우저에서 바로 이 컴퓨터의 Ollama를 호출 → 중지 함수 반환
     aiMatch(onEvent) {
